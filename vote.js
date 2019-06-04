@@ -224,7 +224,10 @@ module.exports = app => {
                     'createVote',
                     txnId,
                     JSON.stringify({
-                        [name]: 0
+                        [name]: {
+                            totalCount: 0,
+                            vote: false
+                        }
                     })
                 );
             }
@@ -268,6 +271,7 @@ module.exports = app => {
             const data = JSON.parse(rawData);
             let filteredData = [];
             let isExist = false;
+            let tmpValue = {};
             // Filter data from record
             if (Array.isArray(data)) {
                 filteredData = data.map(val => {
@@ -276,6 +280,7 @@ module.exports = app => {
                     for (let key in tmp) {
                         if (key === name) {
                             isExist = true;
+                            tmpValue = val;
                         }
                     }
                     if (!isExist) {
@@ -283,17 +288,27 @@ module.exports = app => {
                     }
                 });
             }
-            // Remove undefined
-            filteredData = filteredData.filter(data => data);
-            // Compose final data into object
-            let finalData = {};
-            filteredData.forEach(el => {
-                Object.keys(el).map(key => {
-                    finalData[key] = el[key];
+            let tmpParsed = JSON.parse(tmpValue.Record.value);
+            let alreadyVote = false;
+            if (tmpParsed && tmpParsed[name] && tmpParsed[name].vote) {
+                alreadyVote = tmpParsed[name].vote;
+            }
+            if (alreadyVote) {
+                res.status(200).send({ alreadyVote: true });
+            } else {
+                // Remove undefined
+                filteredData = filteredData.filter(data => data);
+                // Compose final data into object
+                let finalData = {};
+                filteredData.forEach(el => {
+                    Object.keys(el).map(key => {
+                        finalData[key] = el[key];
+                    });
                 });
-            });
-            res.status(200).send(finalData);
+                res.status(200).send(finalData);
+            }
         } catch (err) {
+            console.log(err);
             res.status(500).send(err);
         }
     });
@@ -351,6 +366,7 @@ module.exports = app => {
     app.post('/vote', async (req, res) => {
         try {
             const name = req.body.name;
+            const voterName = req.body.voterName;
             const walletPath = path.join(process.cwd(), 'wallet');
             const wallet = new FileSystemWallet(walletPath);
             console.log(`Wallet path: ${walletPath}`);
@@ -398,7 +414,6 @@ module.exports = app => {
             }
             // Remove undefined
             filteredData = filteredData.filter(data => data);
-            console.log(filteredData);
             // Compose final data into object
             let finalData = {};
             filteredData.forEach(el => {
@@ -407,24 +422,56 @@ module.exports = app => {
                 });
             });
             // Get the id and the transaction
-            const txnId = finalData.Key;
+            let txnId = finalData.Key;
             let value = JSON.parse(finalData.Record.value);
-            let nameVal = '';
-            let totalCount = 0;
-            for (let val in value) {
-                let count = parseInt(value[val]);
-                nameVal = val;
-                totalCount = count + 1;
-            }
+            let totalCount = value[name].totalCount + 1;
             await contract.submitTransaction(
                 'updateVote',
                 txnId,
                 JSON.stringify({
-                    [nameVal]: totalCount
+                    [name]: { totalCount, vote: value[name].vote }
                 })
             );
-            res.sendStatus(200);
+            // Update voter
+            if (Array.isArray(data)) {
+                filteredData = data.map(val => {
+                    let tmp = JSON.parse(val.Record.value);
+                    isExist = false;
+                    for (let key in tmp) {
+                        if (key === voterName) {
+                            isExist = true;
+                        }
+                    }
+                    if (isExist) {
+                        return val;
+                    }
+                });
+            }
+            // Remove undefined
+            filteredData = filteredData.filter(data => data);
+            // Compose final data into object
+            finalData = {};
+            filteredData.forEach(el => {
+                Object.keys(el).map(key => {
+                    finalData[key] = el[key];
+                });
+            });
+            // Get the id and the transaction
+            txnId = finalData.Key;
+            value = JSON.parse(finalData.Record.value);
+            await contract.submitTransaction(
+                'updateVote',
+                txnId,
+                JSON.stringify({
+                    [voterName]: {
+                        totalCount: value[voterName].totalCount,
+                        vote: true
+                    }
+                })
+            );
+            res.status(200).send('');
         } catch (err) {
+            console.log(err);
             res.status(500).send(err);
         }
     });
@@ -485,20 +532,14 @@ module.exports = app => {
             });
         });
         // Get the id and the transaction
-        const txnId = finalData.Key;
+        let txnId = finalData.Key;
         let value = JSON.parse(finalData.Record.value);
-        let nameVal = '';
-        let totalCount = 0;
-        for (let val in value) {
-            let count = parseInt(value[val]);
-            nameVal = val;
-            totalCount = count - 1;
-        }
+        let totalCount = value[name].totalCount - 1;
         await contract.submitTransaction(
             'updateVote',
             txnId,
             JSON.stringify({
-                [nameVal]: totalCount
+                [name]: { totalCount, vote: value[name].vote }
             })
         );
         res.sendStatus(200);
@@ -622,17 +663,15 @@ module.exports = app => {
             });
         });
         // Get the id and the transaction
-        const txnId = finalData.Key;
+        // Get the id and the transaction
+        let txnId = finalData.Key;
         let value = JSON.parse(finalData.Record.value);
-        let nameVal = '';
-        for (let val in value) {
-            nameVal = val;
-        }
+        let totalCount = 0;
         await contract.submitTransaction(
             'updateVote',
             txnId,
             JSON.stringify({
-                [nameVal]: 0
+                [name]: { totalCount, vote: value[name].vote }
             })
         );
         res.sendStatus(200);
