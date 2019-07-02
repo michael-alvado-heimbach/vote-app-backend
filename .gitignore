@@ -1,2 +1,4 @@
 node_modules/
 wallet/
+.nyc_output/
+coverage/

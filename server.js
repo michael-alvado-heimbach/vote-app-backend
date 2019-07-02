@@ -1,13 +1,13 @@
 'use strict';
 
-const express = require('express');
-const app = express();
+import express from 'express';
 // Middleware
-const bodyParser = require('body-parser');
-const compression = require('compression');
-const morgan = require('morgan');
-const cors = require('cors');
+import bodyParser from 'body-parser';
+import compression from 'compression';
+import morgan from 'morgan';
+import cors from 'cors';
 // Constants
+const app = express();
 const port = 8080;
 const host = 'localhost';
 
@@ -19,8 +19,8 @@ app.use(morgan('dev'));
 app.use(cors());
 
 // API Route
-require('./vote')(app);
+require('./modules/route')(app);
 
 app.listen(port, host, () => {
-    console.log(`Running on http://${host}:${port}`);
+	console.log(`Running on http://${host}:${port}`);
 });
