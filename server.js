@@ -1,11 +1,11 @@
 'use strict';
 
-import express from 'express';
+const express = require('express');
 // Middleware
-import bodyParser from 'body-parser';
-import compression from 'compression';
-import morgan from 'morgan';
-import cors from 'cors';
+const bodyParser = require('body-parser');
+const compression = require('compression');
+const morgan = require('morgan');
+const cors = require('cors');
 // Constants
 const app = express();
 const port = 8080;
@@ -22,5 +22,7 @@ app.use(cors());
 require('./modules/route')(app);
 
 app.listen(port, host, () => {
-	console.log(`Running on http://${host}:${port}`);
+    console.log(`Running on http://${host}:${port}`);
 });
+
+module.exports = app;

@@ -9,7 +9,7 @@
 	"engineStrict": true,
 	"scripts": {
 		"lint": "eslint .",
-		"test": "nyc mocha --recursive -r esm",
+		"test": "nyc mocha --exit",
 		"dev": "nodemon --exec babel-node server.js",
 		"start": "set NODE_ENV=production && node server.js"
 	},
@@ -32,6 +32,7 @@
 		"@babel/preset-env": "^7.4.5",
 		"@babel/register": "^7.4.4",
 		"chai": "^4.2.0",
+		"chai-http": "^4.3.0",
 		"eslint": "^5.16.0",
 		"esm": "^3.2.25",
 		"mocha": "^6.1.4",
@@ -40,13 +41,16 @@
 		"rimraf": "^2.6.3"
 	},
 	"nyc": {
+		"include": [
+			"test/**test.js"
+		],
 		"exclude": [
-			"coverage/**",
-			"test/**"
+			"coverage/**"
 		],
 		"reporter": [
 			"text-summary",
-			"html"
+			"html",
+			"text"
 		],
 		"all": true,
 		"check-coverage": true,
