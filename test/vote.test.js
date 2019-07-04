@@ -19,6 +19,7 @@ describe('Vote', function() {
             });
     });
     it('should get all transaction record with a record', function(done) {
+        this.timeout(10000);
         chai.request(app)
             .post('/vote/candidate')
             .send({ name: 'michael alvado' })

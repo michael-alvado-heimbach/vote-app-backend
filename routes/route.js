@@ -1,4 +1,4 @@
-const vote = require('./vote');
+const vote = require('../modules/vote');
 
 const errorHandler = (response, error) => {
     console.log(error);

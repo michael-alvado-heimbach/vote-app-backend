@@ -1,9 +1,5 @@
 const pathFunction = require('path');
-const {
-    FileSystemWallet,
-    Gateway,
-    X509WalletMixin
-} = require('fabric-network');
+const { FileSystemWallet, Gateway } = require('fabric-network');
 const WALLET_NAME = 'wallet';
 const USER_NAME = 'user1';
 const NETWORK_NAME = 'mychannel';
@@ -17,6 +13,192 @@ const TRANSACTION_GET_LAST_VOTE = 'getLastVote';
 const TRANSACTION_CREATE_VOTE = 'createVote';
 const TRANSACTION_UPDATE_VOTE = 'updateVote';
 const TRANSACTION_DELETE_CANDIDATE = 'deleteVote';
+
+const getAllVotes = async () => {
+    try {
+        const currentContract = await getCurrentContract();
+        const rawVotes = await currentContract.evaluateTransaction(
+            TRANSACTION_GET_ALL_VOTE
+        );
+        const votes = convertRawVotesToArray(rawVotes);
+        let convertedVotes = '';
+        if (Array.isArray(votes)) {
+            // Because values inside votes is string
+            convertedVotes = convertEachElementToObject(votes);
+        }
+        let votesObject = convertArrayToObject(convertedVotes);
+        return votesObject;
+    } catch (error) {
+        throw error;
+    }
+};
+
+const createNewVotingCandidate = async candidateName => {
+    try {
+        const currentContract = await getCurrentContract();
+        const rawVotes = await currentContract.evaluateTransaction(
+            TRANSACTION_GET_ALL_VOTE
+        );
+        const votes = convertRawVotesToArray(rawVotes);
+        const candidateExist = isVoteCandidateExist(candidateName, votes);
+        if (!candidateExist) {
+            const rawLastVote = await currentContract.submitTransaction(
+                TRANSACTION_GET_LAST_VOTE
+            );
+            const lastVote = convertRawVotesToArray(rawLastVote);
+            let voteId = '';
+            if (isVoteEmpty(lastVote)) {
+                voteId = createFirstVoteId();
+            } else {
+                voteId = createNewVoteId(lastVote);
+            }
+            await currentContract.submitTransaction(
+                TRANSACTION_CREATE_VOTE,
+                voteId,
+                createEmptyVotingCandidate(candidateName)
+            );
+        }
+    } catch (error) {
+        throw error;
+    }
+};
+
+const voteCandidate = async (voter, candidate) => {
+    try {
+        const currentContract = await getCurrentContract();
+        const rawVotes = await currentContract.evaluateTransaction(
+            TRANSACTION_GET_ALL_VOTE
+        );
+        const votes = convertRawVotesToArray(rawVotes);
+        const candidateArray = getCandidate(candidate, votes);
+        const candidateObject = convertArrayToObject(candidateArray);
+        const candidateTransactionId = getVoteTransactionId(candidate, votes);
+        const newTotalVote = addAVote(candidateObject, candidate);
+        await currentContract.submitTransaction(
+            TRANSACTION_UPDATE_VOTE,
+            candidateTransactionId,
+            updateCandidateTotalCount(candidate, candidateObject, newTotalVote)
+        );
+
+        // Borrow function get candidate to get a voter
+        const voterArray = getCandidate(voter, votes);
+        const voteObject = convertArrayToObject(voterArray);
+        const voteTransactionId = getVoteTransactionId(voter, votes);
+        await currentContract.submitTransaction(
+            TRANSACTION_UPDATE_VOTE,
+            voteTransactionId,
+            updateVoterVoteStatus(voter, voteObject)
+        );
+    } catch (error) {
+        throw error;
+    }
+};
+
+const removeVote = async candidateName => {
+    try {
+        const currentContract = await getCurrentContract();
+        const rawVotes = await currentContract.evaluateTransaction(
+            TRANSACTION_GET_ALL_VOTE
+        );
+        const votes = convertRawVotesToArray(rawVotes);
+        const candidateArray = getCandidate(candidateName, votes);
+        const candidateObject = convertArrayToObject(candidateArray);
+        const candidateTransactionId = getVoteTransactionId(
+            candidateName,
+            votes
+        );
+        const newTotalVote = removeAVote(candidateObject, candidateName);
+        await currentContract.submitTransaction(
+            TRANSACTION_UPDATE_VOTE,
+            candidateTransactionId,
+            updateCandidateTotalCount(
+                candidateName,
+                candidateObject,
+                newTotalVote
+            )
+        );
+    } catch (error) {
+        throw error;
+    }
+};
+
+const resetVote = async candidateName => {
+    try {
+        const currentContract = await getCurrentContract();
+        const rawVotes = await currentContract.evaluateTransaction(
+            TRANSACTION_GET_ALL_VOTE
+        );
+        const votes = convertRawVotesToArray(rawVotes);
+        const candidateArray = getCandidate(candidateName, votes);
+        const candidateObject = convertArrayToObject(candidateArray);
+        const candidateTransactionId = getVoteTransactionId(
+            candidateName,
+            votes
+        );
+        await currentContract.submitTransaction(
+            TRANSACTION_UPDATE_VOTE,
+            candidateTransactionId,
+            resetCandidate(candidateName)
+        );
+    } catch (error) {
+        throw error;
+    }
+};
+
+const deleteCandidate = async candidateName => {
+    try {
+        const currentContract = await getCurrentContract();
+        const rawVotes = await currentContract.evaluateTransaction(
+            TRANSACTION_GET_ALL_VOTE
+        );
+        const votes = convertRawVotesToArray(rawVotes);
+        const candidateTransactionId = getVoteTransactionId(
+            candidateName,
+            votes
+        );
+        await currentContract.submitTransaction(
+            TRANSACTION_DELETE_CANDIDATE,
+            candidateTransactionId
+        );
+    } catch (error) {
+        throw error;
+    }
+};
+
+const candidateDetail = async candidateName => {
+    try {
+        const currentContract = await getCurrentContract();
+        const rawVotes = await currentContract.evaluateTransaction(
+            TRANSACTION_GET_ALL_VOTE
+        );
+        const votes = convertRawVotesToArray(rawVotes);
+        const candidateArray = getCandidate(candidateName, votes);
+        const candidateObject = convertArrayToObject(candidateArray);
+        return candidateObject;
+    } catch (error) {
+        throw error;
+    }
+};
+
+const getFilteredVotes = async voterName => {
+    try {
+        const currentContract = await getCurrentContract();
+        const rawVotes = await currentContract.evaluateTransaction(
+            TRANSACTION_GET_ALL_VOTE
+        );
+        const votes = convertRawVotesToArray(rawVotes);
+        let convertedVotes = '';
+        if (Array.isArray(votes)) {
+            // Because values inside votes is string
+            convertedVotes = convertEachElementToObject(votes);
+        }
+        let votesObject = convertArrayToObject(convertedVotes);
+        delete votesObject[voterName];
+        return votesObject;
+    } catch (error) {
+        throw error;
+    }
+};
 
 const getCppPath = () => {
     return pathFunction.resolve(__dirname, LOCAL_FABRIC_CONNECTION);
@@ -75,25 +257,6 @@ const convertEachElementToObject = votes => {
     return votes.map(vote => JSON.parse(vote.Record.value));
 };
 
-const getAllVotes = async () => {
-    try {
-        const currentContract = await getCurrentContract();
-        const rawVotes = await currentContract.evaluateTransaction(
-            TRANSACTION_GET_ALL_VOTE
-        );
-        const votes = convertRawVotesToArray(rawVotes);
-        let convertedVotes = '';
-        if (Array.isArray(votes)) {
-            // Because values inside votes is string
-            convertedVotes = convertEachElementToObject(votes);
-        }
-        let votesObject = convertArrayToObject(convertedVotes);
-        return votesObject;
-    } catch (error) {
-        throw error;
-    }
-};
-
 const isVoteCandidateExist = (name, votes) => {
     let isExist = false;
     if (Array.isArray(votes)) {
@@ -133,36 +296,6 @@ const createEmptyVotingCandidate = name => {
     });
 };
 
-const createNewVotingCandidate = async candidateName => {
-    try {
-        const currentContract = await getCurrentContract();
-        const rawVotes = await currentContract.evaluateTransaction(
-            TRANSACTION_GET_ALL_VOTE
-        );
-        const votes = convertRawVotesToArray(rawVotes);
-        const candidateExist = isVoteCandidateExist(candidateName, votes);
-        if (!candidateExist) {
-            const rawLastVote = await currentContract.submitTransaction(
-                TRANSACTION_GET_LAST_VOTE
-            );
-            const lastVote = convertRawVotesToArray(rawLastVote);
-            let voteId = '';
-            if (isVoteEmpty(lastVote)) {
-                voteId = createFirstVoteId();
-            } else {
-                voteId = createNewVoteId(lastVote);
-            }
-            await currentContract.submitTransaction(
-                TRANSACTION_CREATE_VOTE,
-                voteId,
-                createEmptyVotingCandidate(candidateName)
-            );
-        }
-    } catch (error) {
-        throw error;
-    }
-};
-
 const filterCandidates = (name, votes) => {
     let isExist = false;
     let candidates = [];
@@ -181,37 +314,6 @@ const filterCandidates = (name, votes) => {
         });
     }
     return candidates;
-};
-
-const voteCandidate = async (voter, candidate) => {
-    try {
-        const currentContract = await getCurrentContract();
-        const rawVotes = await currentContract.evaluateTransaction(
-            TRANSACTION_GET_ALL_VOTE
-        );
-        const votes = convertRawVotesToArray(rawVotes);
-        const candidateArray = getCandidate(candidate, votes);
-        const candidateObject = convertArrayToObject(candidateArray);
-        const candidateTransactionId = getVoteTransactionId(candidate, votes);
-        const newTotalVote = addAVote(candidateObject, candidate);
-        await currentContract.submitTransaction(
-            TRANSACTION_UPDATE_VOTE,
-            candidateTransactionId,
-            updateCandidateTotalCount(candidate, candidateObject, newTotalVote)
-        );
-
-        // Borrow function get candidate to get a voter
-        const voterArray = getCandidate(voter, votes);
-        const voteObject = convertArrayToObject(voterArray);
-        const voteTransactionId = getVoteTransactionId(voter, votes);
-        await currentContract.submitTransaction(
-            TRANSACTION_UPDATE_VOTE,
-            voteTransactionId,
-            updateVoterVoteStatus(voter, voteObject)
-        );
-    } catch (error) {
-        throw error;
-    }
 };
 
 const getCandidate = (name, votes) => {
@@ -271,61 +373,10 @@ const updateVoterVoteStatus = (voterName, voteObject) => {
     });
 };
 
-const removeVote = async candidateName => {
-    try {
-        const currentContract = await getCurrentContract();
-        const rawVotes = await currentContract.evaluateTransaction(
-            TRANSACTION_GET_ALL_VOTE
-        );
-        const votes = convertRawVotesToArray(rawVotes);
-        const candidateArray = getCandidate(candidateName, votes);
-        const candidateObject = convertArrayToObject(candidateArray);
-        const candidateTransactionId = getVoteTransactionId(
-            candidateName,
-            votes
-        );
-        const newTotalVote = removeAVote(candidateObject, candidateName);
-        await currentContract.submitTransaction(
-            TRANSACTION_UPDATE_VOTE,
-            candidateTransactionId,
-            updateCandidateTotalCount(
-                candidateName,
-                candidateObject,
-                newTotalVote
-            )
-        );
-    } catch (error) {
-        throw error;
-    }
-};
-
 const removeAVote = (candidate, name) => {
     const currentVoteTotal = candidate[name].totalCount;
     const newVoteTotal = currentVoteTotal < 0 ? 0 : currentVoteTotal - 1;
     return newVoteTotal;
-};
-
-const resetVote = async candidateName => {
-    try {
-        const currentContract = await getCurrentContract();
-        const rawVotes = await currentContract.evaluateTransaction(
-            TRANSACTION_GET_ALL_VOTE
-        );
-        const votes = convertRawVotesToArray(rawVotes);
-        const candidateArray = getCandidate(candidateName, votes);
-        const candidateObject = convertArrayToObject(candidateArray);
-        const candidateTransactionId = getVoteTransactionId(
-            candidateName,
-            votes
-        );
-        await currentContract.submitTransaction(
-            TRANSACTION_UPDATE_VOTE,
-            candidateTransactionId,
-            resetCandidate(candidateName)
-        );
-    } catch (error) {
-        throw error;
-    }
 };
 
 const resetCandidate = candidateName => {
@@ -335,61 +386,6 @@ const resetCandidate = candidateName => {
             vote: false
         }
     });
-};
-
-const deleteCandidate = async candidateName => {
-    try {
-        const currentContract = await getCurrentContract();
-        const rawVotes = await currentContract.evaluateTransaction(
-            TRANSACTION_GET_ALL_VOTE
-        );
-        const votes = convertRawVotesToArray(rawVotes);
-        const candidateTransactionId = getVoteTransactionId(
-            candidateName,
-            votes
-        );
-        await currentContract.submitTransaction(
-            TRANSACTION_DELETE_CANDIDATE,
-            candidateTransactionId
-        );
-    } catch (error) {
-        throw error;
-    }
-};
-
-const candidateDetail = async candidateName => {
-    try {
-        const currentContract = await getCurrentContract();
-        const rawVotes = await currentContract.evaluateTransaction(
-            TRANSACTION_GET_ALL_VOTE
-        );
-        const votes = convertRawVotesToArray(rawVotes);
-        const candidateArray = getCandidate(candidateName, votes);
-        const candidateObject = convertArrayToObject(candidateArray);
-        return candidateObject;
-    } catch (error) {
-        throw error;
-    }
-};
-
-const getFilteredVotes = async voterName => {
-    try {
-        const currentContract = await getCurrentContract();
-        const rawVotes = await currentContract.evaluateTransaction(
-            TRANSACTION_GET_ALL_VOTE
-        );
-        const votes = convertRawVotesToArray(rawVotes);
-        let convertedVotes = '';
-        if (Array.isArray(votes)) {
-            // Because values inside votes is string
-            convertedVotes = convertEachElementToObject(votes);
-        }
-        let votesObject = convertArrayToObject(convertedVotes);
-        delete votesObject[voterName];
-        return votesObject;
-    } catch (error) {
-        throw error;
-    }
 };
 
 module.exports = {

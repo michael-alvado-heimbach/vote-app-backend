@@ -19,7 +19,7 @@ app.use(morgan('dev'));
 app.use(cors());
 
 // API Route
-require('./modules/route')(app);
+require('./routes/route')(app);
 
 app.listen(port, host, () => {
     console.log(`Running on http://${host}:${port}`);
