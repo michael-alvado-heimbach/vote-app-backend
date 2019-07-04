@@ -9,7 +9,7 @@ const path = require('path');
 const fs = require('fs');
 const _ = require('lodash');
 
-const ccpPath = path.resolve(__dirname, 'local_fabric_connection.json');
+const ccpPath = path.resolve(__dirname, '../local_fabric_connection.json');
 const ccpJSON = fs.readFileSync(ccpPath, 'utf8');
 
 async function registerUser() {
