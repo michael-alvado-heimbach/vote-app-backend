@@ -22,7 +22,7 @@
 		"express": "^4.17.1",
 		"fabric-ca-client": "^1.4.1",
 		"fabric-network": "^1.4.1",
-		"lodash": "^4.17.11",
+		"lodash": "^4.17.21",
 		"morgan": "^1.9.1"
 	},
 	"devDependencies": {
